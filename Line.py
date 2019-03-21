@@ -8,8 +8,8 @@ class Line:
         self.r = 0
         self.numberofLines = 1
         self.stateofLines = []
-        self.activepowerfrom = 0
-        self.activepowerto = 0
+        self.activepowerFrom = 0
+        self.activepowerTo = 0
         self.activepower = 0
         self.lossproportion = []
         self.relationalBus = []
@@ -24,5 +24,7 @@ class Line:
         for state in self.stateofLines:
             if state == 1:
                 num += 1
-        return (self.activepowerfrom-self.activepowerto) * num
-    #def updatePrice(self):
+        self.loss = abs(self.activepowerFrom-self.activepowerTo) * num
+
+    def getAveragePrice(self):
+        return (self.relationalBus[0].realtimePrice + self.relationalBus[1].realtimePrice) / 2

@@ -22,6 +22,34 @@ class Grid220:
             sum += bus.realtimePrice
         self.buspriceAverage = sum / count
 
-    def CalcPowerFlowLoss(self):
+    def calcLinePowerFlowLoss(self):
         for line in self.lines:
             line.calcLineLoss()
+
+    def calcTransformerPowerFlowLoss(self):
+        for transformer in self.transformers:
+            transformer.calcTansformerLoss()
+
+    def calcLinePriceLoss(self):
+        '''计算线路损耗的经济损失'''
+        for line in self.lines:
+            line.cost = line.cost * line.getAveragePrice()
+
+    def calcTransformerPriceLoss(self):
+        '''计算变压器损耗的经济损失'''
+        for transformer in self.transformers:
+            transformer.cost = transformer.loss * transformer.getAveragePrice()
+
+    def calcLinelossProportion(self):
+        for line in self.lines:
+            line.lossproportion = line.loss / line.activepower
+
+    def calcTransformerLossProportion(self):
+        for transformer in self.transformers:
+            transformer.lossproportion = transformer.loss / transformer.activepower
+
+    def getArea(self):
+        '''如何划分网络的区域'''
+
+    def lossJudge(self):
+        '''如何判断那个区域是最需要进行网损优化的区域'''
