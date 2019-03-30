@@ -76,8 +76,8 @@
      2. 电力系统的不等式平衡
         $$
         V_{gmin} \leq V_{gi} \leq V_{gmax}\\
-        	Q_{cmin} \leq Q_{ci} \leq Q_{cmax}\\
-        	T_{imin} \leq T_{i} \leq T_{imax}\\
+        Q_{cmin} \leq Q_{ci} \leq Q_{cmax}\\
+        T_{imin} \leq T_{i} \leq T_{imax}\\
         $$
 
      3. 目标函数
@@ -95,10 +95,28 @@
           把有并联电容电抗的节点处看做PV节点，最后优化算出的无功值可以转化为具体的电抗电容值。
 
           或者让有并联电容电抗器的节点的参数$G_{ij}$ 和 $B_{ij}$  作为变量参与优化。
+          $$
+          F = min [\omega_1 P_{\Delta} + \omega_2 \sum_{i=1}^{N}(\frac{\Delta V_i} {V_{imax}-V_{imin}}) ^ 2 + \omega_3 \sum_{i=1}^{N} (\Delta Q_i)^2]\\
+          s.t.P_i = V_i \sum_{j\in h} V_j(G_{ij}cos\delta_{ij}+B_{ij}sin\delta_{ij})\\
+          Q_i = V_i \sum_{j\in h} V_j(G_{ij}cos\delta_{ij}-B_{ij}sin\delta_{ij})\\
+          V_{gmin} \leq V_{gi} \leq V_{gmax}\\
+          Q_{cmin} \leq Q_{ci} \leq Q_{cmax}\\
+          N_{min} \leq N \leq N_{max} // 可以增加减少的阻抗值的限制值
+          $$
+          
 
         * 线路改变并列方式
 
           改变对应线路的物理参数值，作为控制变量进行优化。（不过是整数规划）
+          $$
+          F = min [\omega_1 P_{\Delta} + \omega_2 \sum_{i=1}^{N}(\frac{\Delta V_i} {V_{imax}-V_{imin}}) ^ 2 + \omega_3 \sum_{i=1}^{N} (\Delta Q_i)^2]\\
+          s.t.P_i = V_i \sum_{j\in h} V_j(G_{ij}cos\delta_{ij}+B_{ij}sin\delta_{ij})\\
+          Q_i = V_i \sum_{j\in h} V_j(G_{ij}cos\delta_{ij}-B_{ij}sin\delta_{ij})\\
+          V_{gmin} \leq V_{gi} \leq V_{gmax}\\
+          Q_{cmin} \leq Q_{ci} \leq Q_{cmax}\\
+          // 如何表示可行集？
+          $$
+          
 
         * 修改变压器的并列方式
 
@@ -133,4 +151,3 @@
         h(x)+u-h_{high} = 0\\
         h(x)-l-h_{low} = 0
         $$
-        
