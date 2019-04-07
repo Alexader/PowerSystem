@@ -2,6 +2,8 @@ from Line import Line
 from Transformer import Transformer
 from Bus import Bus
 from Area import Area
+import cvxpy as cp
+import numpy as np
 
 
 class Grid220:
@@ -53,3 +55,8 @@ class Grid220:
 
     def lossJudge(self):
         '''如何判断那个区域是最需要进行网损优化的区域'''
+
+    def optimize(self):
+        m = 20
+        n = 30
+        
