@@ -182,7 +182,6 @@
           \operatorname{tr}\left(\left(\boldsymbol{\Phi}_{i}+\boldsymbol{\Phi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right)=P_{i}^{\prime}} \\ 
           {\underline{Q}_{i} \leqslant \operatorname{tr}\left(\left(\boldsymbol{\Psi}_{i}+\boldsymbol{\Psi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right) - k_iq_{i,CP} \leqslant \overline{Q}_{i}} \\ {\underline{V}_{i}^{2} \leqslant \operatorname{tr}\left(\boldsymbol{e}_{i} \boldsymbol{e}_{i}^{*} \boldsymbol{U} \boldsymbol{U}^{*}\right) \leqslant \overline{V}_{i}^{2}}
           $$
-          
 
         * 投切母线并联容抗器
 
@@ -253,7 +252,18 @@
 
         * 调节发电机的无功输出
 
-          调节调相机改变不同节点之间的角度差，把角度作为控制变量，把三角函数泰勒展开。多变量优化
+          把电压，无功，变压器的变比作为控制变量
+          $$
+          \begin{aligned} 
+          x &=U \;状态变量，表示PQ节点的电压\\ 
+          u &=\left[U, Q_{\mathrm{c}}, K\right]^{\mathrm{T}} \; 控制变量，PV节点的电压，PQ节点的无功，可调变压器的变比
+          \end{aligned}
+          $$
+          用拉格朗日函数分别对状态变量和控制变量求导
+          $$
+          \begin{aligned} x &=U \\ u &=\left[U, Q_{\mathrm{c}}, K\right]^{\mathrm{T}} \end{aligned}
+          $$
+          在利用梯度下降法进行迭代，找到最优点
 
      4. 变成矩阵的表示形式以及对非凸函数的凸化处理
 
@@ -273,6 +283,7 @@
         h(x)+u-h_{high} = 0\\
         h(x)-l-h_{low} = 0
         $$
+
 
 
 
