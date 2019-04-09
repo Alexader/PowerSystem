@@ -122,11 +122,130 @@
 
         * 改变变压器的变比
 
-          先连续，选最接近的离散值
+          利用混合整数规划
+          $$
+          目标函数 \; F = min [\omega_1 P_{\Delta} + \omega_2 \sum_{i=1}^{N}(\frac{\Delta V_i} {V_{imax}-V_{imin}}) ^ 2 + \omega_3 \sum_{i=1}^{N} (\Delta Q_i)^2]\\
+          $$
+          对于每一个节点，可以列出下面的方程
+          $$
+          S_{i}=e_{i}^{*} U I^{*} e_{i}=e_{i}^{*} U U^{*} Y^{*} e_{i}= \\
+          \operatorname{tr}\left(\boldsymbol{U} \boldsymbol{U}^{*}\left(\boldsymbol{Y}^{*} \boldsymbol{e}_{i} \boldsymbol{e}_{i}^{*}\right)\right)=\boldsymbol{U}^{*} \boldsymbol{Y}_{i}^{*} \boldsymbol{U}=\\
+          \boldsymbol{U}^{*} \frac{\boldsymbol{Y}_{i}^{*}+\boldsymbol{Y}_{i}}{2} \boldsymbol{U}+\mathrm{j}\left(\boldsymbol{U}^{*} \frac{\boldsymbol{Y}_{i}^{*}-\boldsymbol{Y}_{i}}{2 j} \boldsymbol{U}\right)\\
+          S_i 为 节 点 i 的 注 入 功 率;\\
+          e_i 为 第 i 个 元 素 为 1, 其他元素全 为 0 的 列 向 量;\\
+          U 和 I 分 别 为 电 压 列向量 和 电 流 列 向 量;\\
+          Y 为 系 统 节 点 导 纳 矩 阵\\
+          Y_i = e_i e_i^* Y
+          $$
+          为了方便表示，可以利用下面的表示方式： $\Phi_{i}=\left(\boldsymbol{Y}_{i}^{*}+\boldsymbol{Y}_{i}\right) / 2$， $\boldsymbol{\Psi}_{i}=\left(\boldsymbol{Y}_{i}^{*}-\boldsymbol{Y}_{i}\right) / 2$ 。并且对于功率的有功和无功部分分开讨论。
+          $$
+          \left\{\begin{array}{l}
+          {P_{i}=P_{i, \mathrm{DG}}-P_{i, d}=\boldsymbol{U}^{*} \boldsymbol{\Phi}_{i} \boldsymbol{U}} \\ {Q_{i}=Q_{i, \mathrm{pG}}+k_{i} q_{i, \mathrm{CP}}-Q_{i, \mathrm{d}}=\boldsymbol{U}^{*} \boldsymbol{\Psi}_{i} \boldsymbol{U}}
+          \end{array}\right.\\
+          其中P_i 是节点 i 的注入有功功率，Q_i 是节点 i 的注入无功功率\\
+          Q_{i, \mathrm{pG}} 是节点 i 上连接的DG无功功率，k_i 是投切的容抗装置的档位，\\
+          q_{i, \mathrm{CP}} 是单位档位的补偿功率
+          $$
 
-          改变节点的电压值，作为PV节点进行优化
+          接下来就是如何把目标函数中的网损表示为各个节点电压的函数了。
+
+          对于负荷功率有假设如下：
+
+          - 负荷恒功率
+          - 负荷恒阻抗
+
+          则有
+          $$
+          \left
+          \{\begin{array}{c}
+          {P_{i . \mathrm{d}}=P_{i, 0}\left[a_{i, P}\left(\frac{V_{i}}{V_{i, 0}}\right)^{2}+b_{i, P}\right]=b_{i, P} P_{i, 0}+} \\ {\boldsymbol{U}^{*} \boldsymbol{\Phi}_{i}^{*} \boldsymbol{U}} \\ {Q_{i . \mathrm{d}}=Q_{i, 0}\left[a_{i, Q}\left(\frac{V_{i}}{V_{i, 0}}\right)^{2}+b_{i, Q}\right]=b_{i, Q} Q_{i, 0}+} \\ {\boldsymbol{U}^{*} \boldsymbol{\Psi}_{i}^{*} \boldsymbol{U}}\end
+          {array}
+          \right.\\
+          其中a_{i,P}和 b_{i,P}是恒阻抗有功负荷占总有功负荷的比例\\
+          其中a_{i,Q}和 b_{i,Q}是恒阻抗无功负荷占总无功负荷的比例
+          $$
+          网损可以表示为下面的式子
+          $$
+          \begin{aligned} 
+          \Delta P = \sum_{i=1}^{n} P_{i}-\sum_{i=1}^{n} P_{i, \mathrm{d}} &=\sum_{i=1}^{n} \boldsymbol{U}^{*} \boldsymbol{\Phi}_{i} \boldsymbol{U}-\sum_{i=1}^{n} \boldsymbol{U}^{*} \boldsymbol{\Phi}_{i}^{*} \boldsymbol{U}-\\ \sum_{i=1}^{n} b_{i, P} P_{i, 0} &=\boldsymbol{U}^{*}\left(\frac{\boldsymbol{Y}^{*}+\boldsymbol{Y}}{2}-\boldsymbol{\Phi}^{*}\right) \boldsymbol{U}-\\ \sum_{i=1}^{n} b_{i, P} P_{i, 0} &=\operatorname{tr}\left(\boldsymbol{M} \boldsymbol{U} \boldsymbol{U}^{*}\right)-\sum_{i=1}^{n} b_{i, P} P_{i, 0} 
+          \end{aligned}\\
+          其中\; \Phi^{*}=\sum_{i=1}^{n} \Phi_{i}^{*} ; M=\left(Y^{*}+Y\right) / 2-\Phi^{*}
+          $$
+          电压和有功，无功的约束可以表示为下面的形式
+          $$
+          {\min _{\boldsymbol{U}} \operatorname{tr}\left(\boldsymbol{M U U}^{*}\right)} \\ {\text { s.t. } \operatorname{tr}\left(\left(\boldsymbol{\Phi}_{i}+\boldsymbol{\Phi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right)=P_{i}^{\prime}} \\ {\underline{Q}_{i} \leqslant \operatorname{tr}\left(\left(\boldsymbol{\Psi}_{i}+\boldsymbol{\Psi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right) \leqslant \overline{Q}_{i}} \\ {\underline{V}_{i}^{2} \leqslant \operatorname{tr}\left(\boldsymbol{e}_{i} \boldsymbol{e}_{i}^{*} \boldsymbol{U} \boldsymbol{U}^{*}\right) \leqslant \overline{V}_{i}^{2}}
+          $$
+          要加上通过并联容抗器的方式进行调节无功的话，只需要在约束中加上一个离散的变量即可
+          $$
+          {\min _{\boldsymbol{U}} \operatorname{tr}\left(\boldsymbol{M U U}^{*}\right)} \\ 
+          {\text { s.t. } 
+          \operatorname{tr}\left(\left(\boldsymbol{\Phi}_{i}+\boldsymbol{\Phi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right)=P_{i}^{\prime}} \\ 
+          {\underline{Q}_{i} \leqslant \operatorname{tr}\left(\left(\boldsymbol{\Psi}_{i}+\boldsymbol{\Psi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right) - k_iq_{i,CP} \leqslant \overline{Q}_{i}} \\ {\underline{V}_{i}^{2} \leqslant \operatorname{tr}\left(\boldsymbol{e}_{i} \boldsymbol{e}_{i}^{*} \boldsymbol{U} \boldsymbol{U}^{*}\right) \leqslant \overline{V}_{i}^{2}}
+          $$
+          
 
         * 投切母线并联容抗器
+
+          利用混合整数规划
+          $$
+          目标函数 \; F = min [\omega_1 P_{\Delta} + \omega_2 \sum_{i=1}^{N}(\frac{\Delta V_i} {V_{imax}-V_{imin}}) ^ 2 + \omega_3 \sum_{i=1}^{N} (\Delta Q_i)^2]\\
+          $$
+          对于每一个节点，可以列出下面的方程
+          $$
+          S_{i}=e_{i}^{*} U I^{*} e_{i}=e_{i}^{*} U U^{*} Y^{*} e_{i}= \\
+          \operatorname{tr}\left(\boldsymbol{U} \boldsymbol{U}^{*}\left(\boldsymbol{Y}^{*} \boldsymbol{e}_{i} \boldsymbol{e}_{i}^{*}\right)\right)=\boldsymbol{U}^{*} \boldsymbol{Y}_{i}^{*} \boldsymbol{U}=\\
+          \boldsymbol{U}^{*} \frac{\boldsymbol{Y}_{i}^{*}+\boldsymbol{Y}_{i}}{2} \boldsymbol{U}+\mathrm{j}\left(\boldsymbol{U}^{*} \frac{\boldsymbol{Y}_{i}^{*}-\boldsymbol{Y}_{i}}{2 j} \boldsymbol{U}\right)\\
+          S_i 为 节 点 i 的 注 入 功 率;\\
+          e_i 为 第 i 个 元 素 为 1, 其他元素全 为 0 的 列 向 量;\\
+          U 和 I 分 别 为 电 压 列向量 和 电 流 列 向 量;\\
+          Y 为 系 统 节 点 导 纳 矩 阵\\
+          Y_i = e_i e_i^* Y
+          $$
+          为了方便表示，可以利用下面的表示方式： $\Phi_{i}=\left(\boldsymbol{Y}_{i}^{*}+\boldsymbol{Y}_{i}\right) / 2$， $\boldsymbol{\Psi}_{i}=\left(\boldsymbol{Y}_{i}^{*}-\boldsymbol{Y}_{i}\right) / 2$ 。并且对于功率的有功和无功部分分开讨论。
+          $$
+          \left\{\begin{array}{l}
+          {P_{i}=P_{i, \mathrm{DG}}-P_{i, d}=\boldsymbol{U}^{*} \boldsymbol{\Phi}_{i} \boldsymbol{U}} \\ {Q_{i}=Q_{i, \mathrm{pG}}+k_{i} q_{i, \mathrm{CP}}-Q_{i, \mathrm{d}}=\boldsymbol{U}^{*} \boldsymbol{\Psi}_{i} \boldsymbol{U}}
+          \end{array}\right.\\
+          其中P_i 是节点 i 的注入有功功率，Q_i 是节点 i 的注入无功功率\\
+          Q_{i, \mathrm{pG}} 是节点 i 上连接的DG无功功率，k_i 是投切的容抗装置的档位，\\
+          q_{i, \mathrm{CP}} 是单位档位的补偿功率
+          $$
+          接下来就是如何把目标函数中的网损表示为各个节点电压的函数了。
+
+          对于负荷功率有假设如下：
+
+          * 负荷恒功率
+          * 负荷恒阻抗
+
+          则有
+          $$
+          \left
+          \{\begin{array}{c}
+          {P_{i . \mathrm{d}}=P_{i, 0}\left[a_{i, P}\left(\frac{V_{i}}{V_{i, 0}}\right)^{2}+b_{i, P}\right]=b_{i, P} P_{i, 0}+} \\ {\boldsymbol{U}^{*} \boldsymbol{\Phi}_{i}^{*} \boldsymbol{U}} \\ {Q_{i . \mathrm{d}}=Q_{i, 0}\left[a_{i, Q}\left(\frac{V_{i}}{V_{i, 0}}\right)^{2}+b_{i, Q}\right]=b_{i, Q} Q_{i, 0}+} \\ {\boldsymbol{U}^{*} \boldsymbol{\Psi}_{i}^{*} \boldsymbol{U}}\end
+          {array}
+          \right.\\
+          其中a_{i,P}和 b_{i,P}是恒阻抗有功负荷占总有功负荷的比例\\
+          其中a_{i,Q}和 b_{i,Q}是恒阻抗无功负荷占总无功负荷的比例
+          $$
+          网损可以表示为下面的式子
+          $$
+          \begin{aligned} 
+          \Delta P = \sum_{i=1}^{n} P_{i}-\sum_{i=1}^{n} P_{i, \mathrm{d}} &=\sum_{i=1}^{n} \boldsymbol{U}^{*} \boldsymbol{\Phi}_{i} \boldsymbol{U}-\sum_{i=1}^{n} \boldsymbol{U}^{*} \boldsymbol{\Phi}_{i}^{*} \boldsymbol{U}-\\ \sum_{i=1}^{n} b_{i, P} P_{i, 0} &=\boldsymbol{U}^{*}\left(\frac{\boldsymbol{Y}^{*}+\boldsymbol{Y}}{2}-\boldsymbol{\Phi}^{*}\right) \boldsymbol{U}-\\ \sum_{i=1}^{n} b_{i, P} P_{i, 0} &=\operatorname{tr}\left(\boldsymbol{M} \boldsymbol{U} \boldsymbol{U}^{*}\right)-\sum_{i=1}^{n} b_{i, P} P_{i, 0} 
+          \end{aligned}\\
+          其中\; \Phi^{*}=\sum_{i=1}^{n} \Phi_{i}^{*} ; M=\left(Y^{*}+Y\right) / 2-\Phi^{*}
+          $$
+          电压和有功，无功的约束可以表示为下面的形式
+          $$
+          {\min _{\boldsymbol{U}} \operatorname{tr}\left(\boldsymbol{M U U}^{*}\right)} \\ {\text { s.t. } \operatorname{tr}\left(\left(\boldsymbol{\Phi}_{i}+\boldsymbol{\Phi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right)=P_{i}^{\prime}} \\ {\underline{Q}_{i} \leqslant \operatorname{tr}\left(\left(\boldsymbol{\Psi}_{i}+\boldsymbol{\Psi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right) \leqslant \overline{Q}_{i}} \\ {\underline{V}_{i}^{2} \leqslant \operatorname{tr}\left(\boldsymbol{e}_{i} \boldsymbol{e}_{i}^{*} \boldsymbol{U} \boldsymbol{U}^{*}\right) \leqslant \overline{V}_{i}^{2}}
+          $$
+          要加上通过并联容抗器的方式进行调节无功的话，只需要在约束中加上一个离散的变量即可
+          $$
+          {\min _{\boldsymbol{U}} \operatorname{tr}\left(\boldsymbol{M U U}^{*}\right)} \\ 
+          {\text { s.t. } 
+          \operatorname{tr}\left(\left(\boldsymbol{\Phi}_{i}+\boldsymbol{\Phi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right)=P_{i}^{\prime}} \\ 
+          {\underline{Q}_{i} \leqslant \operatorname{tr}\left(\left(\boldsymbol{\Psi}_{i}+\boldsymbol{\Psi}_{i}^{*}\right) \boldsymbol{U} \boldsymbol{U}^{*}\right) - k_iq_{i,CP} \leqslant \overline{Q}_{i}} \\ {\underline{V}_{i}^{2} \leqslant \operatorname{tr}\left(\boldsymbol{e}_{i} \boldsymbol{e}_{i}^{*} \boldsymbol{U} \boldsymbol{U}^{*}\right) \leqslant \overline{V}_{i}^{2}}
+          $$
+          
 
         2. 发电机主动调整方法
 
@@ -155,4 +274,9 @@
         h(x)-l-h_{low} = 0
         $$
 
+
+
+$$
+
+$$
 
