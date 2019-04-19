@@ -4,6 +4,7 @@ from Bus import Bus
 from Area import Area
 import cvxpy as cp
 import numpy as np
+import panda as pd
 
 
 class Grid220:
@@ -59,4 +60,5 @@ class Grid220:
     def optimize(self):
         m = 20
         n = 30
+        Line = pd.xlsread()
         
