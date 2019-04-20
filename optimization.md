@@ -341,3 +341,12 @@ $$
    电网节点的电压和线路的无功潮流作为被控制的变量，节点处的补偿无功作为控制变量。灵敏度矩阵描述被控制量和控制量的关系，而灵敏度的元素取决于系统的结构。
 
    给予当前的结构参数，计算当前的灵敏度矩阵，按照灵敏度矩阵来修计算被控制量的增量。
+
+___
+
+模型：
+$$
+min \; \Delta P\\
+\left.\begin{array}{l}{P-\operatorname{diag}[U][G \cos \theta+B \sin \theta][U]=0} \\ 
+{Q-\operatorname{diag}[U][G \sin \theta-B \cos \theta][U]=0}\end{array}\right\}\\
+$$
