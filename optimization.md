@@ -346,7 +346,25 @@ ___
 
 模型：
 $$
-min \; \Delta P\\
-\left.\begin{array}{l}{P-\operatorname{diag}[U][G \cos \theta+B \sin \theta][U]=0} \\ 
-{Q-\operatorname{diag}[U][G \sin \theta-B \cos \theta][U]=0}\end{array}\right\}\\
+min \; \sum_{i=1}^{Nb} r_{ij}\tilde{I}_{i j}\\
+\tilde{I}_{i j}=\frac{\left(P_{i j}\right)^{2}+\left(Q_{i j} \right)^{2}}{\tilde{U}_{i}} \;（1）\\
+\tilde{U}_{i}=(U_{i})^{2} \;（2）\\
+\tilde{I}_{ij}=(I_{ij})^{2} \;（3）\\
+\sum_{i \in u(j)}\left(P_{i j} -r_{i j} \tilde{I}_{i j}\right) =\sum_{k \in v(j)} P_{j k}+P_{j} \;（4）\\ 
+\sum_{i \in u(j)}\left(Q_{i j}-x_{i j} \tilde{I}_{i j}\right) =\sum_{k \in v(j)} Q_{j k}+Q_{j} \;（5）\\
+P_{j}=P_{j, \mathrm{DG}} - P_{j, \mathrm{d}} \;（6）\\
+Q_j = Q_{j,DG} + Q_{j,SVC} + Q_{j, CB} - Q_{j,LD} \;（7）\\
+\tilde{U}_{j}=\tilde{U}_{i}-2\left(r_{i j} P_{i j}+x_{i j} Q_{i j} \right)+\left[\left(r_{i j} \right)^{2}+\left(x_{i j} \right)^{2}\right] \tilde{I}_{i j} \;（8）\\
 $$
+
+模型中通过(2) (3)变量替换目标函数和除了（1）之外的等式约束全部化为线性的约束
+
+然后通过对于（1）式的松弛
+$$
+\tilde{I}_{i j} \geq \frac{\left(P_{i j}\right)^{2}+\left(Q_{i j}\right)^{2}}{\tilde{U}_{i}} \\
+进一步变形\\
+\left| \begin{array}{c}
+{2 P_{i j} } \\ {2 Q_{i j}} \\ {\tilde{I}_{i j}-\tilde{U}_{i}}\end{array}
+\right| \leq \tilde{I}_{i j}^{\varphi, t}+\tilde{U}_{i}^{\varphi, t}
+$$
+这样就满足二阶锥规划的形式。
