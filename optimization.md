@@ -363,8 +363,11 @@ $$
 $$
 \tilde{I}_{i j} \geq \frac{\left(P_{i j}\right)^{2}+\left(Q_{i j}\right)^{2}}{\tilde{U}_{i}} \\
 进一步变形\\
-\left| \begin{array}{c}
-{2 P_{i j} } \\ {2 Q_{i j}} \\ {\tilde{I}_{i j}-\tilde{U}_{i}}\end{array}
-\right| \leq \tilde{I}_{i j}^{\varphi, t}+\tilde{U}_{i}^{\varphi, t}
+\left\| 
+\begin{array}{c} {2 P_{i j} } \\ {2 Q_{i j}} \\ {\tilde{I}_{i j}-\tilde{U}_{i}}\end{array}
+\right\|_2 \leq \tilde{I}_{i j} +\tilde{U}_{i} \\
 $$
-这样就满足二阶锥规划的形式。
+这样就满足二阶锥规划(SOCP)的形式。
+$$
+When we solve a SOCP, in addition to a solution \(x^\star\), we obtain a dual solution \(\lambda_i^\star\) corresponding to each second-order cone constraint. A non-zero \(\lambda_i^\star\) indicates that the constraint \(\|A_ix + b_i\|_2 \leq c_i^Tx + d_i\) holds with equality for \(x^\star\) and suggests that changing \(d_i\) would change the optimal value
+$$

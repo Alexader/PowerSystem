@@ -24,13 +24,18 @@ m = 6
 # prob.solve()
 # print(prob.value)
 
-V = cp.Variable(n)
-theta = cp.Variable(n)
-G = np.eye(n)
-B = cp.Variable((n,n))
+Iij2 = cp.Variable(m)
+U2 = cp.Variable(n)
+R = np.random.randn(n, n)
+X = np.random.randn(n, n)
+Pij = cp.Variable(m) # 传输功率
+Qij = cp.Variable(m)
+P = cp.Variable(n) # 注入功率
 Q = cp.Variable(n)
-P = cp.Constant(n)
+equal_constraints = []
+for i in range(m):
+    # 对于每一条线路都有潮流约束
+    for j in range(m):
+obj = cp.Variable()
 
-cons = [P-cp.diag(V)*(cp.multiply(G, np.cos(theta)) + cp.multiply(B, np.sin(theta)))*V==0]
-obj = 
 objfn = cp.Minimize(obj)
