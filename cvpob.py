@@ -28,14 +28,39 @@ Iij2 = cp.Variable(m)
 U2 = cp.Variable(n)
 R = np.random.randn(n, n)
 X = np.random.randn(n, n)
+PLD = np.random.randn(n)
+PJD = cp.Variable(n)
 Pij = cp.Variable(m) # 传输功率
 Qij = cp.Variable(m)
 P = cp.Variable(n) # 注入功率
 Q = cp.Variable(n)
+N_CB = cp.Variable(n, integer=True)
+
 equal_constraints = []
 for i in range(m):
     # 对于每一条线路都有潮流约束
     for j in range(m):
+        a = i*j
+
+# (6) 号等式约束
+for i in range(n):
+    if typeofNode(i)==1: # 是发电机节点
+        equal_constraints += [P[i] == PJD[i]-PLD[i]]
+    else:
+        equal_constraints += [P[i] == PLD[i]]
+#（7）号等式约束
+# （8）号等式约束
+def index2nodeNum(i, j):
+    # i, j 号节点编号转化为支路标号
+    return i*j
+for i in range(n):
+    for j in range(n):
+        equal_constraints += [\
+            U2[i] == U2[j] - 2*(R[i][j]*P[index2nodeNum(i,j)] + X[i][j]*index2nodeNum(i, j))\
+            + (R[i][j]**2 + X[i][j]**2)*Iij2[index2nodeNum(i,j)]\
+        ]
 obj = cp.Variable()
+for i in range(m):
+    obj += R[i]*Iij2[i]
 
 objfn = cp.Minimize(obj)

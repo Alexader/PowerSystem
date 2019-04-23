@@ -355,6 +355,10 @@ min \; \sum_{i=1}^{Nb} r_{ij}\tilde{I}_{i j}\\
 P_{j}=P_{j, \mathrm{DG}} - P_{j, \mathrm{d}} \;（6）\\
 Q_j = Q_{j,DG} + Q_{j,SVC} + Q_{j, CB} - Q_{j,LD} \;（7）\\
 \tilde{U}_{j}=\tilde{U}_{i}-2\left(r_{i j} P_{i j}+x_{i j} Q_{i j} \right)+\left[\left(r_{i j} \right)^{2}+\left(x_{i j} \right)^{2}\right] \tilde{I}_{i j} \;（8）\\
+Q_{j,CB} = N*Q_{CB,step} // N 为整数\\
+N_{min} <N<N_{max}\\
+\tilde{I}_{i j,min} \leq \tilde{I}_{i j} \leq \tilde{I}_{i j,max}\\
+\tilde{U}_{i,min} \leq \tilde{U}_{i} \leq \tilde{U}_{i,max}\\
 $$
 
 模型中通过(2) (3)变量替换目标函数和除了（1）之外的等式约束全部化为线性的约束
@@ -368,6 +372,6 @@ $$
 \right\|_2 \leq \tilde{I}_{i j} +\tilde{U}_{i} \\
 $$
 这样就满足二阶锥规划(SOCP)的形式。
-$$
-When we solve a SOCP, in addition to a solution \(x^\star\), we obtain a dual solution \(\lambda_i^\star\) corresponding to each second-order cone constraint. A non-zero \(\lambda_i^\star\) indicates that the constraint \(\|A_ix + b_i\|_2 \leq c_i^Tx + d_i\) holds with equality for \(x^\star\) and suggests that changing \(d_i\) would change the optimal value
-$$
+
+$Q_{CB}$ 是投切电容器（电抗器）的手段，$Q_{j,DG}$ 是调整发电机出力的手段，$Q_{SVC}$ 是SVC调整手段
+
