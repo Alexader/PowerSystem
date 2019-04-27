@@ -36,6 +36,7 @@ P = cp.Variable(n) # 注入功率
 Q = cp.Variable(n)
 N_CB = cp.Variable(n, integer=True)
 
+
 equal_constraints = []
 for i in range(m):
     # 对于每一条线路都有潮流约束
@@ -43,12 +44,16 @@ for i in range(m):
         a = i*j
 
 # (6) 号等式约束
+typeofNode = {} # 用字典保存节点的类型
 for i in range(n):
-    if typeofNode(i)==1: # 是发电机节点
+    if typeofNode[i]==1: # 是发电机节点
         equal_constraints += [P[i] == PJD[i]-PLD[i]]
-    else:
+    else: # 负荷节点
         equal_constraints += [P[i] == PLD[i]]
+
 #（7）号等式约束
+for i in range(n):
+	QiDG = 
 # （8）号等式约束
 def index2nodeNum(i, j):
     # i, j 号节点编号转化为支路标号
@@ -59,6 +64,7 @@ for i in range(n):
             U2[i] == U2[j] - 2*(R[i][j]*P[index2nodeNum(i,j)] + X[i][j]*index2nodeNum(i, j))\
             + (R[i][j]**2 + X[i][j]**2)*Iij2[index2nodeNum(i,j)]\
         ]
+
 obj = cp.Variable()
 for i in range(m):
     obj += R[i]*Iij2[i]
