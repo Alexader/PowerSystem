@@ -352,16 +352,16 @@ min \; \sum_{i=1}^{Nb} r_{ij}\tilde{I}_{i j}\\
 \tilde{I}_{ij}=(I_{ij})^{2} \;（3）\\
 \sum_{i \in u(j)}\left(P_{i j} -r_{i j} \tilde{I}_{i j}\right) =\sum_{k \in v(j)} P_{j k}+P_{j} \;（4）\\ 
 \sum_{i \in u(j)}\left(Q_{i j}-x_{i j} \tilde{I}_{i j}\right) =\sum_{k \in v(j)} Q_{j k}+Q_{j} \;（5）\\
-P_{j}=P_{j, \mathrm{DG}} - P_{j, \mathrm{d}} \;（6）\\
+P_{j}=P_{j, \mathrm{DG}} - P_{j, \mathrm{LD}} \;（6）\\
 Q_j = Q_{j,DG} + Q_{j,SVC} + Q_{j, CB} - Q_{j,LD} \;（7）\\
 \tilde{U}_{j}=\tilde{U}_{i}-2\left(r_{i j} P_{i j}+x_{i j} Q_{i j} \right)+\left[\left(r_{i j} \right)^{2}+\left(x_{i j} \right)^{2}\right] \tilde{I}_{i j} \;（8）\\
-Q_{j,CB} = N*Q_{CB,step} // N 为整数\\
-N_{min} <N<N_{max}\\
-\tilde{I}_{i j,min} \leq \tilde{I}_{i j} \leq \tilde{I}_{i j,max}\\
-\tilde{U}_{i,min} \leq \tilde{U}_{i} \leq \tilde{U}_{i,max}\\
+Q_{j,CB} = N*Q_{CB,step} // N 为整数\;(9)\\
+N_{min} <N<N_{max} \;(10)\\
+\tilde{I}_{i j,min} \leq \tilde{I}_{i j} \leq \tilde{I}_{i j,max} \;(11)\\
+\tilde{U}_{i,min} \leq \tilde{U}_{i} \leq \tilde{U}_{i,max}\;(12)\\
 $$
 
-模型中通过(2) (3)变量替换目标函数和除了（1）之外的等式约束全部化为线性的约束
+模型中通过(2) (3)变量2替换目标函数和除了（1）之外的等式约束全部化为线性的约束
 
 然后通过对于（1）式的松弛
 $$
@@ -369,7 +369,7 @@ $$
 进一步变形\\
 \left\| 
 \begin{array}{c} {2 P_{i j} } \\ {2 Q_{i j}} \\ {\tilde{I}_{i j}-\tilde{U}_{i}}\end{array}
-\right\|_2 \leq \tilde{I}_{i j} +\tilde{U}_{i} \\
+\right\|_2 \leq \tilde{I}_{i j} +\tilde{U}_{i} \; (13)\\
 $$
 这样就满足二阶锥规划(SOCP)的形式。
 
