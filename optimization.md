@@ -384,7 +384,7 @@ $$
 J^{I} =
 \left\{\begin{array}{l}{\infty, f_1>H^{I}} \\ 
 {0,f_1 \leq H^{I}}\end{array}\right.\\
-f_1 = \\
+f_1 = (\frac{V-V_N}{V_N})^2\\
 首先在f_1不变差的情况下优化f_1 的值，确定了一部分\\
 变量的值之后把这部分变量确定下来作为参数继续优化f_2 的值\\
 f_2 = \sum_{i=1}^{Nb} r_{ij}\tilde{I}_{i j}

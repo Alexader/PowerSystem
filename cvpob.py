@@ -1,44 +1,38 @@
 import cvxpy as cp
 import numpy as np
+import json
 
+# 读入电网结构的信息
+with open("data.json", "r") as read_file:
+    data = json.load(read_file)
+nodeInfo = data["nodeInfo"]
+lines = data["lineInfo"]
 
 n = 5
 m = 6
-# VN = cp.Constant(n)
-# QN = cp.Constant(m)
-# Vmax = np.full(n, 1.05)
-# # Vmax = cp.Constant(Vmax)
-# Vmin = np.full(n, 0.95)
-# Qmax = np.full(m, 1.05)
-# Qmin = np.full(m, 0.95)
-# DeltaV = cp.Variable(n)
-# DeltaQ = cp.Variable(m)
-# Y = cp.Constant((n,n))
-
-# DeltaP = 
-# objfn = cp.Minimize(cp.sum(DeltaV**2) + cp.sum(DeltaQ**2))
-# constraints = [DeltaV + VN <= Vmax, DeltaV + VN >= Vmin, DeltaQ + QN <= Qmax, DeltaQ + QN >= Qmin]
-
-# prob = cp.Problem(objfn, constraints)
-# print(prob.is_dcp())
-# prob.solve()
-# print(prob.value)
 Nmax = 10
 Nmin = -10
 Umax = 1.05
 Umin = 0.95
 Imax = 1.95
 
-Iij2 = cp.Variable(m)
-U2 = cp.Variable(n)
 np.random.seed(2)
-R = np.random.randn(n, n)
-X = np.random.randn(n, n)
+R = np.zeros(n, n)	
+X = np.zeros(n, n)
 PLD = np.random.randn(n)
 QLD = np.random.randn(n)
 QCBStep = np.random.randn()
+for line in lines:
+	i = line["startNode"]
+	j = line["endNode"]
+	R[i][j] = R[j][i] = line["R"]
+	X[i][j] = X[j][i] = line["X"]
+for i, node in enumerate(nodeInfo):
+	PLD[i] = node["PLD"]
+	QLD[i] = node["QLD"]
 
-
+Iij2 = cp.Variable(m)
+U2 = cp.Variable(n)
 PDG = cp.Variable(n) # J节点处的发电机功率
 QSVG = cp.Variable(n)
 QDG = cp.Variable(n)
@@ -55,13 +49,13 @@ N_CB = cp.Variable(n, integer=True)
 equal_constraints = []
 inequal_constraints = []
 # (4) (5) 号约束
-for i in range(m):
+adjacentTable = data["adjacentTable"]
+for i in range(n):
     # 对于每一条线路都有潮流约束
-    for j in range(m):
-        a = i*j
+    
 
 # (6) 号等式约束
-typeofNode = {} # 用字典保存节点的类型
+typeofNode = data["nodeType"] # 用字典保存节点的类型
 for i in range(n):
     if typeofNode[i]==1: # 是发电机节点
         equal_constraints += [P[i] == PDG[i]-PLD[i]]
@@ -83,9 +77,9 @@ for i in range(n):
             + (R[i][j]**2 + X[i][j]**2)*Iij2[index2nodeNum(i,j)]\
         ]
 # (9) (10) 号约束
-hasCapBank = np.random.randn(n) # 标记该节点是否配置容抗器
+# node["hasCB"] 标记该节点是否配置容抗器
 for i in range(n):
-	if(hasCapBank[i] == True):
+	if(nodeInfo["hasCB"] == True):
 		inequal_constraints += [N_CB[i] <= Nmax, N_CB[i] >= Nmin]
 		equal_constraints += [QCB[i] == N_CB[i]*QCBStep]
 # (11) (12) 号约束
@@ -93,12 +87,17 @@ inequal_constraints += [U2 <= Umax, U2 >= Umin] # 电压约束
 inequal_constraints += [Iij2 <= Imax] # 电流约束
 # cone 约束
 # We use cp.SOC(t, x) to create the SOC constraint ||x||_2 <= t.
-X_cone = [2*Pij, 2*Qij, Iij2 - U2]
-cone_constraints = cp.SOC(X_cone, Iij2 + U2)
+cones = []
+for i in range(m):
+	# 每一条线路都是一个cone，X是长度为3的列向量，t是标量
+	startNode = lines[i]["startNode"]
+	cones.append(cp.SOC(Iij2[i]+U2[startNode],\
+		[2*Pij[i], 2*Qij[i], Iij2[i]-U2[startNode]]))
+
 obj = cp.Variable()
 for i in range(m):
     obj += R[i]*Iij2[i]
 
 objfn = cp.Minimize(obj)
-prob = cp.Problem(objfn, equal_constraints+inequal_constraints)
+prob = cp.Problem(objfn, equal_constraints+inequal_constraints+cones)
 print(prob.is_dcp())
