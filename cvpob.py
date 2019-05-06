@@ -56,7 +56,7 @@ for item in nodeInfo:
         N_CB.append(0.0)
     else:
         QCB.append(cp.Variable())
-        N_CB.append(cp.Variable(1, integer=True))
+        N_CB.append(cp.Variable(integer=True))
 
 QCBStep = np.random.randn()
 for line in lines:
@@ -82,17 +82,25 @@ Q = cp.Variable(n)
 equal_constraints = []
 inequal_constraints = []
 # (4) (5) 号约束
-# adjacentTable = data["node"]
+# 构造电网结构胡邻接矩阵
+Graph = [[] for i in range(n)]
+
+for line in lines:
+    i = line[1]
+    j = line[2]
+    Graph[i-1].append(j)
+    Graph[j-1].append(i)
+
 # for i in range(n):
 #     # 对于每一条线路都有潮流约束
-#     print(i)
+    
 
 # (6) 号等式约束
 for i in range(n):
     if nodeInfo[i][7]==2: # 是发电机节点
         equal_constraints += [P[i] == PDG[i]-PLD[i]]
     else: # 负荷节点
-        equal_constraints += [P[i] == PLD[i]]
+        equal_constraints += [P[i] == -PLD[i]]
 
 #（7）号等式约束
 print(len(PLD))
@@ -101,6 +109,8 @@ for i in range(n):
 
 #（8）号等式约束
 for line in lines:
+	#   0         1         2        3       4        5         6
+    # 线路编号 & 起始节点 & 结束节点 & {R_1} & {X_1} & {B_1/2} & {变比K}
     i = line[1]-1
     j = line[2]-1
     equal_constraints += [
@@ -139,7 +149,7 @@ for i in range(m):
 		Z[i] - Y[2][i] == 2*U2[startNode-1]
 	]
 	
-cones += [cp.SOC(Z, Y, axis=1)]
+cones += [cp.SOC(Z, Y)]
 obj = cp.Variable()
 for k in range(m):
     i = lines[k][1]
@@ -148,4 +158,7 @@ for k in range(m):
 
 objfn = cp.Minimize(obj)
 prob = cp.Problem(objfn, equal_constraints+inequal_constraints+cones)
-print(prob.is_dcp())
+print(prob.is_mixed_integer())
+
+value = prob.solve(solver=cp.ECOS_BB)
+print(value)
