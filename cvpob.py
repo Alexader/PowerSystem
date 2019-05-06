@@ -1,3 +1,4 @@
+# --coding:utf-8 --
 import cvxpy as cp
 import numpy as np
 import json
@@ -16,8 +17,8 @@ Umax = 1.05
 Umin = 0.95
 Imax = 1.95
 
-R = np.zeros(n, n)
-X = np.zeros(n, n)
+R = np.zeros((n, n))
+X = np.zeros((n, n))
 PLD = []
 QLD = []
 # 按照节点的类型进行分类，从而可以区分不同的变量
@@ -37,14 +38,14 @@ for item in nodeInfo:
     PLD.append(item[4])
     QLD.append(item[5])
     # 判断是否有可调发电机
-    if item[7]==1:
-        U2.append(cp.Variable())
+    if item[7]==2:
+        U2.append(1.0)
         PDG.append(cp.Variable())
         QDG.append(cp.Variable())
     else:
-        U2.append(1.0)
+        U2.append(cp.Variable())
         PDG.append(0.0)
-        PDG.append(0.0)
+        QDG.append(0.0)
     # 判断是否有安装 SVG 和 CB装置
     if item[8] == 0:
         QSVG.append(0.0)
@@ -63,8 +64,8 @@ for line in lines:
     # line :
     #   0         1         2        3       4        5         6
     # 线路编号 & 起始节点 & 结束节点 & {R_1} & {X_1} & {B_1/2} & {变比K}
-	i = line[1]
-	j = line[2]
+	i = line[1]-1
+	j = line[2]-1
 	R[i][j] = R[j][i] = line[3]
 	X[i][j] = X[j][i] = line[4]
 
@@ -72,6 +73,8 @@ Iij2 = cp.Variable(m)
 
 Pij = cp.Variable(m) # 传输功率
 Qij = cp.Variable(m)
+Y = cp.Variable(shape=(3, m))
+Z = cp.Variable(m)
 
 P = cp.Variable(n) # 注入功率
 Q = cp.Variable(n)
@@ -79,32 +82,31 @@ Q = cp.Variable(n)
 equal_constraints = []
 inequal_constraints = []
 # (4) (5) 号约束
-adjacentTable = data["adjacentTable"]
-for i in range(n):
-    # 对于每一条线路都有潮流约束
-    ...
+# adjacentTable = data["node"]
+# for i in range(n):
+#     # 对于每一条线路都有潮流约束
+#     print(i)
 
 # (6) 号等式约束
 for i in range(n):
-    if nodeInfo[i][7]==1: # 是发电机节点
+    if nodeInfo[i][7]==2: # 是发电机节点
         equal_constraints += [P[i] == PDG[i]-PLD[i]]
     else: # 负荷节点
         equal_constraints += [P[i] == PLD[i]]
 
 #（7）号等式约束
+print(len(PLD))
 for i in range(n):
 	equal_constraints += [Q[i] == QDG[i] + QSVG[i] + QLD[i]]
 
 #（8）号等式约束
-def index2nodeNum(i, j):
-    # i, j 号节点编号转化为支路标号
-    return i*j
-for i in range(n):
-    for j in range(i+1, n):
-        equal_constraints += [\
-            U2[i] == U2[j] - 2*(R[i][j]*P[index2nodeNum(i,j)] + X[i][j]*index2nodeNum(i, j))\
-            + (R[i][j]**2 + X[i][j]**2)*Iij2[index2nodeNum(i,j)]\
-        ]
+for line in lines:
+    i = line[1]-1
+    j = line[2]-1
+    equal_constraints += [
+        U2[i] == U2[j] - 2*(R[i][j]*P[line[0]-1] + X[i][j]*Q[line[0]-1])\
+        + (R[i][j]**2 + X[i][j]**2)*Iij2[line[0]-1]\
+    ]
 # (9) (10) 号约束
 # nodeInfo[i][9] 标记该节点是否配置容抗器
 for i in range(n):
@@ -118,13 +120,26 @@ for i in range(n):
 inequal_constraints += [Iij2 <= Imax] # 电流约束
 # cone 约束
 # We use cp.SOC(t, x) to create the SOC constraint ||x||_2 <= t.
+#	|| 2*Pij  ||
+#	|| 2*Qij  ||  <= I2ij+U2i
+#	|| I2ij-U2i ||2
+#   进行变量替换和合并，需要增加下面新的约束
+#	Y[0] = 2*Pij, Y[1] = 2*Qij, Y[2] = I2ij-U2i
+#	Z = I2ij+U2i
 cones = []
 for i in range(m):
 	# 每一条线路都是一个cone，X是长度为3的列向量，t是标量
 	startNode = lines[i][1]
-	cones.append(cp.SOC(Iij2[i]+U2[startNode],\
-		[2*Pij[i], 2*Qij[i], Iij2[i]-U2[startNode]]))
-
+	equal_constraints += [
+		Y[0][i] == 2*Pij[i], 
+		Y[1][i] == 2*Qij[i], 
+		Y[2][i] == Iij2[i]-U2[startNode-1],
+		Z[i] == Iij2[i] + U2[startNode - 1],
+		Y[2][i] + Z[i] == 2*Iij2[i],
+		Z[i] - Y[2][i] == 2*U2[startNode-1]
+	]
+	
+cones += [cp.SOC(Z, Y, axis=1)]
 obj = cp.Variable()
 for k in range(m):
     i = lines[k][1]
