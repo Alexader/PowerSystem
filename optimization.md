@@ -350,12 +350,12 @@ min \; \sum_{i=1}^{Nb} r_{ij}\tilde{I}_{i j}\\
 \tilde{I}_{i j}=\frac{\left(P_{i j}\right)^{2}+\left(Q_{i j} \right)^{2}}{\tilde{U}_{i}} \;（1）\\
 \tilde{U}_{i}=(U_{i})^{2} \;（2）\\
 \tilde{I}_{ij}=(I_{ij})^{2} \;（3）\\
-\sum_{i \in u(j)}\left(P_{i j} -r_{i j} \tilde{I}_{i j}\right) =\sum_{k \in v(j)} P_{j k}+P_{j} \;（4）\\ 
+P_j = \sum_{k\in N} P_k（4）\\ 
 \sum_{i \in u(j)}\left(Q_{i j}-x_{i j} \tilde{I}_{i j}\right) =\sum_{k \in v(j)} Q_{j k}+Q_{j} \;（5）\\
 P_{j}=P_{j, \mathrm{DG}} - P_{j, \mathrm{LD}} \;（6）\\
 Q_j = Q_{j,DG} + Q_{j,SVC} + Q_{j, CB} - Q_{j,LD} \;（7）\\
 \tilde{U}_{j}=\tilde{U}_{i}-2\left(r_{i j} P_{i j}+x_{i j} Q_{i j} \right)+\left[\left(r_{i j} \right)^{2}+\left(x_{i j} \right)^{2}\right] \tilde{I}_{i j} \;（8）\\
-Q_{j,CB} = N*Q_{CB,step} // N 为整数\;(9)\\
+Q_{j,CB} = N*Q_{CB,step}\;(9)\\
 N_{min} <N<N_{max} \;(10)\\
 \tilde{I}_{i j,min} \leq \tilde{I}_{i j} \leq \tilde{I}_{i j,max} \;(11)\\
 \tilde{U}_{i,min} \leq \tilde{U}_{i} \leq \tilde{U}_{i,max}\;(12)\\
@@ -390,8 +390,9 @@ f_2 = \sum_{i=1}^{Nb} r_{ij}\tilde{I}_{i j}
 $$
 二级调度：
 $$
-\begin{array}{l}{\operatorname{Min} \quad C(\mathbf{x}, \mathbf{u})} \\ {\text {s.t.} \mathbf{f}(\mathbf{x}, \mathbf{u})=0}\\
-{l}{\mathbf{f}_{i}\left(\mathbf{x}_{i}, \mathbf{u}\right)=0 \quad i=1,2, \cdots, n_{c}} \\ {\mathbf{h}(\mathbf{x}, \mathbf{u}) \leq 0} \\ {\mathbf{h}_{i}\left(\mathbf{x}_{i}, \mathbf{u}\right) \leq 0 \quad i=1,2, \cdots, n_{c}}\end{array}
+\begin{array}{l}{\operatorname{Min} \quad C(\mathbf{x}, \mathbf{u})} \\ 
+{\text {s.t.} \mathbf{f}(\mathbf{x}, \mathbf{u})=0}\\
+\hspace{1em}{l}{\mathbf{f}_{i}\left(\mathbf{x}_{i}, \mathbf{u}\right)=0 \quad i=1,2, \cdots, n_{c}} \\ {\mathbf{h}(\mathbf{x}, \mathbf{u}) \leq 0} \\ {\mathbf{h}_{i}\left(\mathbf{x}_{i}, \mathbf{u}\right) \leq 0 \quad i=1,2, \cdots, n_{c}}\end{array}
 $$
 经典的OPF模型，一般是说$x$是状态变量，$u$ 在控制中有什么不同吗？
 
