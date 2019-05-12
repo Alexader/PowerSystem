@@ -82,18 +82,41 @@ Q = cp.Variable(n)
 equal_constraints = []
 inequal_constraints = []
 # (4) (5) 号约束
-# 构造电网结构胡邻接矩阵
+# 构造电网结构的邻接矩阵
 Graph = [[] for i in range(n)]
+parentNode = [[] for j in range(n)]
+childNode = [[] for j in range(n)]
 
+nodeNum2LineNum = {}
 for line in lines:
     i = line[1]
     j = line[2]
+    nodeNum2LineNum[(i, j)] = nodeNum2LineNum[(j, i)] = line[0]
     Graph[i-1].append(j)
     Graph[j-1].append(i)
+    if line[7] > 0:# 判断潮流的流向
+        parentNode[j-1].append[i]
+        childNode[i-1].append[j]
+    else:
+        parentNode[i-1].append[j]
+        childNode[j-1].append[i]
+for line in lines:
+    # 对于每一条线路都有潮流约束
+    lineNum = line[0]
+    i = line[1]
+    j = line[j]
 
-# for i in range(n):
-#     # 对于每一条线路都有潮流约束
-    
+# 对于每一个节点计算支路潮流等式
+for i in range(n):
+    sumParent = 0
+    sumChild = 0
+    for parent in parentNode[i]:
+        lineNum = nodeNum2LineNum[(i, parent)]
+        sumParent += (Pij[lineNum] - Iij2[lineNum]*R[lineNum])
+    for child in childNode[i]:
+        lineNum = nodeNum2LineNum[(i, child)]
+        sumChild += (Pij[lineNum] - Iij2[lineNum]*R[lineNum])
+    equal_constraints += [sumParent + P[i] == sumChild]
 
 # (6) 号等式约束
 for i in range(n):
@@ -109,8 +132,8 @@ for i in range(n):
 
 #（8）号等式约束
 for line in lines:
-	#   0         1         2        3       4        5         6
-    # 线路编号 & 起始节点 & 结束节点 & {R_1} & {X_1} & {B_1/2} & {变比K}
+	#   0         1         2        3       4        5         6      7
+    # 线路编号 & 起始节点 & 结束节点 & {R_1} & {X_1} & {B_1/2} & {变比K} & Pij
     i = line[1]-1
     j = line[2]-1
     equal_constraints += [
