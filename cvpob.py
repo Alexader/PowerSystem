@@ -29,6 +29,28 @@ QDG = []
 QSVG = [] # 节点处的SVG提供的无功调节，没有安装则为0
 QCB = [] # 同上
 N_CB = []
+# 构造电网结构的邻接矩阵
+Graph = [[] for i in range(n)]
+parentNode = [[] for j in range(n)]
+childNode = [[] for j in range(n)]
+
+nodeNum2LineNum = {}
+for line in lines:
+    i = line[1]
+    j = line[2]
+    if i != j:
+        nodeNum2LineNum[(i, j)] = nodeNum2LineNum[(j, i)] = line[0]
+        Graph[i-1].append(j)
+        Graph[j-1].append(i)
+        if line[7] > 0:# 判断潮流的流向
+            parentNode[j-1].append(i)
+            childNode[i-1].append(j)
+        else:
+            parentNode[i-1].append(j)
+            childNode[j-1].append(i)
+    else :
+        nodeInfo[i][9] = 1
+
 # 记录负荷功率值
 for item in nodeInfo:
     # item 为list类型
@@ -58,7 +80,7 @@ for item in nodeInfo:
         QCB.append(cp.Variable())
         N_CB.append(cp.Variable(integer=True))
 
-QCBStep = np.random.randn()
+QCBStep = 0.01
 for line in lines:
     # lines 为 矩阵形式的 list
     # line :
@@ -82,40 +104,16 @@ Q = cp.Variable(n)
 equal_constraints = []
 inequal_constraints = []
 # (4) (5) 号约束
-# 构造电网结构的邻接矩阵
-Graph = [[] for i in range(n)]
-parentNode = [[] for j in range(n)]
-childNode = [[] for j in range(n)]
-
-nodeNum2LineNum = {}
-for line in lines:
-    i = line[1]
-    j = line[2]
-    nodeNum2LineNum[(i, j)] = nodeNum2LineNum[(j, i)] = line[0]
-    Graph[i-1].append(j)
-    Graph[j-1].append(i)
-    if line[7] > 0:# 判断潮流的流向
-        parentNode[j-1].append[i]
-        childNode[i-1].append[j]
-    else:
-        parentNode[i-1].append[j]
-        childNode[j-1].append[i]
-for line in lines:
-    # 对于每一条线路都有潮流约束
-    lineNum = line[0]
-    i = line[1]
-    j = line[j]
-
 # 对于每一个节点计算支路潮流等式
 for i in range(n):
     sumParent = 0
     sumChild = 0
     for parent in parentNode[i]:
-        lineNum = nodeNum2LineNum[(i, parent)]
-        sumParent += (Pij[lineNum] - Iij2[lineNum]*R[lineNum])
+        lineNum = nodeNum2LineNum[(i+1, parent)] - 1
+        sumParent += (Pij[lineNum] - Iij2[lineNum]*R[i][parent-1])
     for child in childNode[i]:
-        lineNum = nodeNum2LineNum[(i, child)]
-        sumChild += (Pij[lineNum] - Iij2[lineNum]*R[lineNum])
+        lineNum = nodeNum2LineNum[(i+1, child)] - 1
+        sumChild += (Pij[lineNum] - Iij2[lineNum]*R[i][child-1])
     equal_constraints += [sumParent + P[i] == sumChild]
 
 # (6) 号等式约束
@@ -150,7 +148,7 @@ for i in range(n):
 for i in range(n):
     if nodeInfo[7] == 1:
         inequal_constraints += [U2[i] <= Umax, U2[i] >= Umin] # 电压约束
-inequal_constraints += [Iij2 <= Imax] # 电流约束
+inequal_constraints += [Iij2 <= Imax, Iij2 >= 0] # 电流约束
 # cone 约束
 # We use cp.SOC(t, x) to create the SOC constraint ||x||_2 <= t.
 #	|| 2*Pij  ||
@@ -171,7 +169,7 @@ for i in range(m):
 		Y[2][i] + Z[i] == 2*Iij2[i],
 		Z[i] - Y[2][i] == 2*U2[startNode-1]
 	]
-	
+
 cones += [cp.SOC(Z, Y)]
 obj = cp.Variable()
 for k in range(m):
@@ -181,7 +179,19 @@ for k in range(m):
 
 objfn = cp.Minimize(obj)
 prob = cp.Problem(objfn, equal_constraints+inequal_constraints+cones)
-print(prob.is_mixed_integer())
+# print(prob.is_mixed_integer())
 
 value = prob.solve(solver=cp.ECOS_BB)
-print(value)
+# for voltage in U2:
+#     if isinstance(voltage, cp.Variable):
+#         print("the optimal voltage is {}".format(voltage.value))
+#     else :
+#         print("const value")
+for i, cur in enumerate(Iij2):
+    print("current vlaue of line {} to {} is {}".format(lines[i][1], lines[i][2], cur.value))
+for i, item in enumerate(N_CB):
+    if isinstance(item, cp.Variable):
+        print("Capacitor at node {} is in {}".format(i+1, item.value))
+
+print(prob.value)
+print(prob.status)
