@@ -4,7 +4,7 @@ import numpy as np
 import json
 
 # 读入电网结构的信息
-with open("powerFlow.json", "r") as read_file:
+with open("data.json", "r") as read_file:
     data = json.load(read_file)
 nodeInfo = data["node"]
 lines = data["lines"]
@@ -84,8 +84,8 @@ QCBStep = 0.01
 for line in lines:
     # lines 为 矩阵形式的 list
     # line :
-    #   0         1         2        3       4        5         6
-    # 线路编号 & 起始节点 & 结束节点 & {R_1} & {X_1} & {B_1/2} & {变比K}
+    #   0         1         2        3       4        5         6      7
+    # 线路编号 & 起始节点 & 结束节点 & {R_1} & {X_1} & {B_1/2} & {变比K}  Pij
 	i = line[1]-1
 	j = line[2]-1
 	R[i][j] = R[j][i] = line[3]
@@ -146,7 +146,7 @@ for i in range(n):
 		equal_constraints += [QCB[i] == N_CB[i]*QCBStep]
 # (11) (12) 号约束
 for i in range(n):
-    if nodeInfo[7] == 1:
+    if nodeInfo[i][7] == 1:
         inequal_constraints += [U2[i] <= Umax, U2[i] >= Umin] # 电压约束
 inequal_constraints += [Iij2 <= Imax, Iij2 >= 0] # 电流约束
 # cone 约束
@@ -175,23 +175,23 @@ obj = cp.Variable()
 for k in range(m):
     i = lines[k][1]
     j = lines[k][2]
-    obj += R[i][j]*Iij2[k]
+    obj += R[i-1][j-1]*Iij2[k]
 
 objfn = cp.Minimize(obj)
 prob = cp.Problem(objfn, equal_constraints+inequal_constraints+cones)
 # print(prob.is_mixed_integer())
 
 value = prob.solve(solver=cp.ECOS_BB)
-# for voltage in U2:
-#     if isinstance(voltage, cp.Variable):
-#         print("the optimal voltage is {}".format(voltage.value))
-#     else :
-#         print("const value")
-for i, cur in enumerate(Iij2):
-    print("current vlaue of line {} to {} is {}".format(lines[i][1], lines[i][2], cur.value))
-for i, item in enumerate(N_CB):
-    if isinstance(item, cp.Variable):
-        print("Capacitor at node {} is in {}".format(i+1, item.value))
+for voltage in U2:
+    if isinstance(voltage, cp.Variable):
+        print("the optimal voltage is {}".format(voltage.value))
+    else :
+        print("const value")
+# for i, cur in enumerate(Iij2):
+#     print("current vlaue of line {} to {} is {}".format(lines[i][1], lines[i][2], cur.value))
+# for i, item in enumerate(N_CB):
+#     if isinstance(item, cp.Variable):
+#         print("Capacitor at node {} is in {}".format(i+1, item.value))
 
 print(prob.value)
 print(prob.status)
