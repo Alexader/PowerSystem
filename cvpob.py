@@ -2,6 +2,7 @@
 import cvxpy as cp
 import numpy as np
 import json
+import math
 
 # 读入电网结构的信息
 with open("data.json", "r") as read_file:
@@ -57,11 +58,11 @@ for item in nodeInfo:
     #  0     1      2         3        4       5      6       7       8     9   10
     # 编号 &  U & {\theta} & {P_g} & {Q_g} & {P_L} & {Q_L} & 节点类型& SVG &  CB  
     # 0 是平衡节点，1是PQ节点，2是 PV节点
-    PLD.append(item[4])
-    QLD.append(item[5])
+    PLD.append(item[5])
+    QLD.append(item[6])
     # 判断是否有可调发电机
     if item[7]==2:
-        U2.append(1.0)
+        U2.append(1.1)
         PDG.append(cp.Variable())
         QDG.append(cp.Variable())
     else:
@@ -91,10 +92,10 @@ for line in lines:
 	R[i][j] = R[j][i] = line[3]
 	X[i][j] = X[j][i] = line[4]
 
-Iij2 = cp.Variable(m)
+Iij2 = cp.Variable((n, n))
 
-Pij = cp.Variable(m) # 传输功率
-Qij = cp.Variable(m)
+Pij = cp.Variable((n, n)) # 传输功率
+Qij = cp.Variable((n,n))
 Y = cp.Variable(shape=(3, m))
 Z = cp.Variable(m)
 
@@ -103,30 +104,40 @@ Q = cp.Variable(n)
 
 equal_constraints = []
 inequal_constraints = []
+# 矩阵必须是对称矩阵
+for i in range(n):
+	for j in range(n):
+		equal_constraints += [Iij2[i][j] == Iij2[j][i]]
+# 传输功率限制
+for line in lines:
+	i = line[1] - 1
+	j = line[2] - 1
+	equal_constraints += [(Pij[i][j]+Pij[j][i]) == Iij2[i][j]*R[i][j]]
 # (4) (5) 号约束
 # 对于每一个节点计算支路潮流等式
 for i in range(n):
-    sumParent = 0
-    sumChild = 0
+    sumParentP = sumParentQ = 0
+    sumChildP = sumChildQ = 0
     for parent in parentNode[i]:
-        lineNum = nodeNum2LineNum[(i+1, parent)] - 1
-        sumParent += (Pij[lineNum] - Iij2[lineNum]*R[i][parent-1])
+        sumParentP += (Pij[parent-1][i] - Iij2[parent-1][i]*R[parent-1][i])
+        sumParentQ += (Qij[parent-1][i] - Iij2[parent-1][i]*X[parent-1][i])
     for child in childNode[i]:
-        lineNum = nodeNum2LineNum[(i+1, child)] - 1
-        sumChild += (Pij[lineNum] - Iij2[lineNum]*R[i][child-1])
-    equal_constraints += [sumParent + P[i] == sumChild]
+        sumChildP += Pij[i][child - 1]
+        sumChildQ += Qij[i][child - 1]
+    equal_constraints += [sumParentP + P[i] == sumChildP, sumParentQ + Q[i] == sumChildQ]
 
 # (6) 号等式约束
 for i in range(n):
-    if nodeInfo[i][7]==2: # 是发电机节点
-        equal_constraints += [P[i] == PDG[i]-PLD[i]]
-    else: # 负荷节点
-        equal_constraints += [P[i] == -PLD[i]]
+    # if nodeInfo[i][7]==1: # 负荷节点
+    #     equal_constraints += [P[i] == -PLD[i]]
+    # else: # 是发电机节点
+    #     equal_constraints += [P[i] == PDG[i]-PLD[i]]
+    equal_constraints += [P[i] == PDG[i] - PLD[i]]
 
 #（7）号等式约束
 print(len(PLD))
 for i in range(n):
-	equal_constraints += [Q[i] == QDG[i] + QSVG[i] + QLD[i]]
+	equal_constraints += [Q[i] == QDG[i] + QSVG[i] +QCB[i] - QLD[i]]
 
 #（8）号等式约束
 for line in lines:
@@ -135,8 +146,10 @@ for line in lines:
     i = line[1]-1
     j = line[2]-1
     equal_constraints += [
-        U2[i] == U2[j] - 2*(R[i][j]*P[line[0]-1] + X[i][j]*Q[line[0]-1])\
-        + (R[i][j]**2 + X[i][j]**2)*Iij2[line[0]-1]\
+        U2[i] == U2[j] - 2*(R[i][j]*Pij[i][j] + X[i][j]*Qij[i][j])\
+        + (R[i][j]**2 + X[i][j]**2)*Iij2[i][j],\
+		U2[j] == U2[i] - 2*(R[i][j]*Pij[j][i] + X[i][j]*Qij[j][i])\
+		+ (R[i][j]**2 + X[i][j]**2)*Iij2[j][i]
     ]
 # (9) (10) 号约束
 # nodeInfo[i][9] 标记该节点是否配置容抗器
@@ -158,40 +171,48 @@ inequal_constraints += [Iij2 <= Imax, Iij2 >= 0] # 电流约束
 #	Y[0] = 2*Pij, Y[1] = 2*Qij, Y[2] = I2ij-U2i
 #	Z = I2ij+U2i
 cones = []
-for i in range(m):
+for line in lines:
 	# 每一条线路都是一个cone，X是长度为3的列向量，t是标量
-	startNode = lines[i][1]
+	i = line[1] - 1
+	j = line[2] - 1
 	equal_constraints += [
-		Y[0][i] == 2*Pij[i], 
-		Y[1][i] == 2*Qij[i], 
-		Y[2][i] == Iij2[i]-U2[startNode-1],
-		Z[i] == Iij2[i] + U2[startNode - 1],
-		Y[2][i] + Z[i] == 2*Iij2[i],
-		Z[i] - Y[2][i] == 2*U2[startNode-1]
+		Y[0][i] == 2*Pij[i][j], 
+		Y[1][i] == 2*Qij[i][j], 
+		Y[2][i] == Iij2[i][j]-U2[i-1],
+		Z[i] == Iij2[i][j] + U2[i - 1],
+		Y[2][i] + Z[i] == 2*Iij2[i][j],
+		Z[i] - Y[2][i] == 2*U2[i-1]
 	]
 
 cones += [cp.SOC(Z, Y)]
-obj = cp.Variable()
+obj = 0
 for k in range(m):
-    i = lines[k][1]
-    j = lines[k][2]
-    obj += R[i-1][j-1]*Iij2[k]
+    i = lines[k][1]-1
+    j = lines[k][2]-1
+    obj += R[i][j]*Iij2[i][j]
 
 objfn = cp.Minimize(obj)
 prob = cp.Problem(objfn, equal_constraints+inequal_constraints+cones)
 # print(prob.is_mixed_integer())
 
 value = prob.solve(solver=cp.ECOS_BB)
-for voltage in U2:
-    if isinstance(voltage, cp.Variable):
-        print("the optimal voltage is {}".format(voltage.value))
-    else :
-        print("const value")
-# for i, cur in enumerate(Iij2):
-#     print("current vlaue of line {} to {} is {}".format(lines[i][1], lines[i][2], cur.value))
-# for i, item in enumerate(N_CB):
-#     if isinstance(item, cp.Variable):
-#         print("Capacitor at node {} is in {}".format(i+1, item.value))
 
+#输出优化后的结果
+for i, voltage in enumerate(U2):
+    if isinstance(voltage, cp.Variable):
+        print("the voltage of node {} is {}".format(i+1, math.sqrt(voltage.value)))
+    else :
+        print("const votage value of node {} is {}".format(i+1, voltage))
+for line in lines:
+	i = line[1]
+	j = line[2]
+	print("current vlaue of line {} to {} is {}".format(i, j, Iij2[i-1][j-1].value))
+for i, item in enumerate(N_CB):
+    if isinstance(item, cp.Variable):
+        print("Capacitor at node {} is in {}".format(i+1, item.value))
+for i in range(n):
+	for j in range(n):
+		print("S[{}][{}] is {}".format(i+1, j+1, Pij[i][j].value))
+		# print("current of node {} to node {} is {}".format(i+1, j+1, math.sqrt(Iij2[i][j].value)))
 print(prob.value)
 print(prob.status)
