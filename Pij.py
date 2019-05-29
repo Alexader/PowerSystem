@@ -50,7 +50,7 @@ for i in range(n):
 		yi0 = 0
 		if (i+1, j+1) in nodeNum2LineNum:
 			yi0 = lines[nodeNum2LineNum[(i+1, j+1)]][5]*1j
-			print(yi0)
+			# print(yi0)
 		S[i][j] = U[i]**2*yi0 + U[i]*(np.conj(U[i]) - np.conj(U[j]))*Y[i][j]
 
 Pij = np.real(S)
@@ -59,19 +59,25 @@ for item in Pij:
 	for i in item:
 		if i != 0:
 			cnt =  cnt+1
-			print(i)
+			# print(i)
 print(cnt)
-with open("data.json", 'r+') as append_file:
-	data = json.load(append_file)
+with open("data.json", 'r') as append_file:
+	# data = json.load(append_file)
 	with open("Pij.json", 'r') as read_file:
 		Pijdict = json.load(read_file)
 		Pij = Pijdict["Pij"]
-	lines = data["lines"]
+	loss = 0
 	for line in lines:
-		i = line[1] - 1
-		j = line[2] - 1
-		line.append(Pij[i][j])
-		print(Pij[i][j])
+		i = line[1]
+		j = line[2]
+		loss += Pij[i][j] + Pij[j][i]
+	print(loss)
+	# lines = data["lines"]
+	# for line in lines:
+	# 	i = line[1] - 1
+	# 	j = line[2] - 1
+	# 	line.append(Pij[i][j])
+	# 	print(Pij[i][j])
 
 # with open('data.json', 'w') as f:
 # 	json.dump(data, f, indent=4)

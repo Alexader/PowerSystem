@@ -7,15 +7,18 @@ import math
 # 读入电网结构的信息
 with open("data.json", "r") as read_file:
     data = json.load(read_file)
-nodeInfo = data["node"]
-lines = data["lines"]
-
+nodeInfo = data["node1"]
+lines = data["lines1"]
+# loss = 4.904397751492898
+loss = 0
+for line in lines:
+    loss += line[8]
 n = len(nodeInfo)
 m = len(lines)
 Nmax = 10
 Nmin = -10
-Umax = 1.05
-Umin = 0.95
+Umax = 1.1
+Umin = 0.9
 Imax = 1.95
 
 R = np.zeros((n, n))
@@ -62,13 +65,15 @@ for item in nodeInfo:
     QLD.append(item[6])
     # 判断是否有可调发电机
     if item[7]==2:
-        U2.append(1.1)
-        PDG.append(cp.Variable())
-        QDG.append(cp.Variable())
+        U2.append(item[1])
     else:
         U2.append(cp.Variable())
+    if item[7]==1:
         PDG.append(0.0)
         QDG.append(0.0)
+    else:
+        PDG.append(cp.Variable())
+        QDG.append(cp.Variable())
     # 判断是否有安装 SVG 和 CB装置
     if item[8] == 0:
         QSVG.append(0.0)
@@ -81,12 +86,12 @@ for item in nodeInfo:
         QCB.append(cp.Variable())
         N_CB.append(cp.Variable(integer=True))
 
-QCBStep = 0.01
+QCBStep = 0.004
 for line in lines:
     # lines 为 矩阵形式的 list
     # line :
-    #   0         1         2        3       4        5         6      7
-    # 线路编号 & 起始节点 & 结束节点 & {R_1} & {X_1} & {B_1/2} & {变比K}  Pij
+    #   0         1         2        3       4        5         6      7    8
+    # 线路编号 & 起始节点 & 结束节点 & {R_1} & {X_1} & {B_1/2} & {变比K}  Pij  Ploss
 	i = line[1]-1
 	j = line[2]-1
 	R[i][j] = R[j][i] = line[3]
@@ -108,11 +113,14 @@ inequal_constraints = []
 for i in range(n):
 	for j in range(n):
 		equal_constraints += [Iij2[i][j] == Iij2[j][i]]
+		if (i, j) not in nodeNum2LineNum:
+			equal_constraints += [Iij2[i][j] == 0]
 # 传输功率限制
 for line in lines:
 	i = line[1] - 1
 	j = line[2] - 1
-	equal_constraints += [(Pij[i][j]+Pij[j][i]) == Iij2[i][j]*R[i][j]]
+	equal_constraints += [Pij[i][j]+Pij[j][i] == Iij2[i][j]*R[i][j]]
+	inequal_constraints += [Pij[i][j]+Pij[j][i] >= 0]
 # (4) (5) 号约束
 # 对于每一个节点计算支路潮流等式
 for i in range(n):
@@ -186,19 +194,29 @@ for line in lines:
 
 cones += [cp.SOC(Z, Y)]
 obj = 0
+alpha = 1
 for k in range(m):
     i = lines[k][1]-1
     j = lines[k][2]-1
-    obj += R[i][j]*Iij2[i][j]
-
+    obj += alpha*(R[i][j]*Iij2[i][j])
+# for i in range(n):
+# 	if nodeInfo[i][7] == 1:
+# 		obj += (1-alpha)*cp.abs(U2[i]-1.0)
 objfn = cp.Minimize(obj)
 prob = cp.Problem(objfn, equal_constraints+inequal_constraints+cones)
 # print(prob.is_mixed_integer())
 
 value = prob.solve(solver=cp.ECOS_BB)
+print(prob.status)
 
 #输出优化后的结果
 for i, voltage in enumerate(U2):
+    if isinstance(QSVG[i], cp.Variable):
+        print("节点{}的SVG无功功率：{}".format(i+1, QSVG[i].value))
+    if isinstance(QCB[i], cp.Variable):
+        print("节点{}的QCB无功功率：{}".format(i+1, QCB[i].value))
+    if isinstance(PDG[i], cp.Variable):
+        print("发电机节点{}的有功功率：{}，无功功率：{}".format(i+1, PDG[i].value, QDG[i].value))
     if isinstance(voltage, cp.Variable):
         print("the voltage of node {} is {}".format(i+1, math.sqrt(voltage.value)))
     else :
@@ -207,12 +225,18 @@ for line in lines:
 	i = line[1]
 	j = line[2]
 	print("current vlaue of line {} to {} is {}".format(i, j, Iij2[i-1][j-1].value))
-for i, item in enumerate(N_CB):
-    if isinstance(item, cp.Variable):
-        print("Capacitor at node {} is in {}".format(i+1, item.value))
+# for i, item in enumerate(N_CB):
+#     if isinstance(item, cp.Variable):
+#         print("Capacitor at node {} is in {}".format(i+1, item.value))
 for i in range(n):
 	for j in range(n):
 		print("S[{}][{}] is {}".format(i+1, j+1, Pij[i][j].value))
 		# print("current of node {} to node {} is {}".format(i+1, j+1, math.sqrt(Iij2[i][j].value)))
-print(prob.value)
-print(prob.status)
+optimal = 0
+for line in lines:
+    i = line[1] - 1
+    j = line[2] - 1
+    optimal += Pij[i][j].value + Pij[j][i].value
+print("before optimization loss is {}".format(loss))
+print("after optimization loss is {}".format(prob.value))
+print((loss - prob.value)/loss)
