@@ -3,9 +3,7 @@ import cvxpy as cp
 import numpy as np
 import json
 import math
-import datetime
 
-start = datetime.datetime.now()
 # 读入电网结构的信息
 with open("data.json", "r") as read_file:
     data = json.load(read_file)
@@ -14,7 +12,6 @@ lines = data["lines"]
 
 n = len(nodeInfo)
 m = len(lines)
-print(n)
 
 parentNode = [[] for j in range(n)]
 childNode = [[] for j in range(n)]
@@ -32,11 +29,11 @@ for line in lines:
     X[i][j] = X[j][i] = line[4]
     if i != j:
         if line[7] > 0:
-            parentNode[j].append(i-1)
-            childNode[i].append(j-1)
+            parentNode[j] = i-1
+            childNode[i] = j-1
         if line[7] < 0:
-            parentNode[i].append(j-1)
-            childNode[j].append(i-1)
+            parentNode[i] = j-1
+            childNode[j] = i-1
 
 PLD = []
 QLD = []
@@ -70,7 +67,6 @@ for node in nodeInfo:
         U2.append(cp.Variable())
     else: # PV节点的Q不确定
         QDG.append(cp.Variable())
-        PDG.append(node[3])
         U2.append(node[1])
     # 根据装置的位置确定变量
     if node[8] == 1:
@@ -89,8 +85,6 @@ Pij = cp.Variable((n,n))
 Qij = cp.Variable((n,n))
 P = cp.Variable(n)
 Q = cp.Variable(n)
-Y = cp.Variable(shape=(3, m))
-Z = cp.Variable(m)
 equal_constraints = []
 inequal_constraints = []
 QCB_Step = 0.004
@@ -99,10 +93,9 @@ QCB_Step = 0.004
 for node in nodeInfo:
     i = node[0] - 1
     equal_constraints += [P[i] == PDG[i] - PLD[i],
-         Q[i] == QDG[i] +QSVG[i] + QCB[i] - QLD[i]
-         ]
+         Q[i] == QDG[i] +QSVG[i] + QCB[i] - QLD[i],
+         QCB[i] == QCB_Step*N_CB[i]]
     if isinstance(QCB[i], cp.Variable):
-        equal_constraints += [QCB[i] == QCB_Step*N_CB[i]]
         inequal_constraints += [N_CB[i] <= node[10], N_CB[i] >= node[11]]
     if isinstance(U2[i], cp.Variable):
         inequal_constraints += [U2[i] <= Umax, U2[i] >= Umin]
@@ -117,8 +110,8 @@ for line in lines:
     j = line[2] - 1
     if i != j:
         equal_constraints += [
-            U2[i] - U2[j] == 2*(R[i][j]*Pij[i][j] + X[i][j]*Qij[i][j]) - Iij2[i][j]*(R[i][j]**2 + X[i][j]**2),
-            U2[j] - U2[i] == 2*(R[i][j]*Pij[j][i] + X[i][j]*Qij[j][i]) - Iij2[j][i]*(R[i][j]**2 + X[i][j]**2)
+            U2[i] - U2[j] == 2*(R[i][j]*Pij[i][j] + X[i][j]*Q[i][j]) - Iij2[i][j]*(R[i][j]**2 + X[i][j]**2),
+            U2[j] - U2[i] == 2*(R[i][j]*Pij[j][i] + X[i][j]*Q[j][i]) - Iij2[j][i]*(R[i][j]**2 + X[i][j]**2)
         ]
         LineExist[(i, j)] = LineExist[(j, i)] = 1
 # 变量替换中自然带有的约束
@@ -130,9 +123,7 @@ for i in range(n):
                             Iij2[i][j]*R[i][j] == Pij[i][j] + Pij[j][i]]
         if (i, j) not in LineExist:
             equal_constraints += [Iij2[i][j] == 0]
-                # Pij[i][j] == 0, Pij[j][i] == 0,
-                # Qij[i][j] == 0, Qij[j][i] == 0]
-
+        
 for node in nodeInfo:
     i = node[0] - 1
     sumParentP = sumParentQ = 0
@@ -141,8 +132,8 @@ for node in nodeInfo:
         sumParentP += (Pij[parent][i] - Iij2[parent][i]*R[parent][i])
         sumParentQ += (Qij[parent][i] - Iij2[parent][i]*X[parent][i])
     for child in childNode[i]:
-        sumChildP += (Pij[i][child] - Iij2[i][child]*R[i][child])
-        sumChildQ += (Qij[i][child] - Iij2[i][child]*X[i][child])
+        sumChildP += (P[i][child] - Iij2[i][child]*R[i][child])
+        sumChildQ += (Q[i][child] - Iij2[i][child]*X[i][child])
     equal_constraints += [sumParentP + P[i] == sumChildP,\
                         sumParentQ + Q[i] == sumChildQ]
 equal_constraints += [Iij2 <= Imax, Iij2 >= 0]
@@ -152,18 +143,9 @@ cones = []
 for line in lines:
     i = line[1] - 1
     j = line[2] - 1
-    Xcone = cp.vstack((2*Pij[i][j], 2*Qij[i][j], Iij2[i][j] - U2[i]))
+    Xcone = cp.vstack(2*Pij[i][j], 2*Qij[i][j], Iij2[i][j] - U2[i])
     t = Iij2[i][j] + U2[i]
     cones += [cp.SOC(t, Xcone)]
-    # equal_constraints += [
-	# 	Y[0][i] == 2*Pij[i][j], 
-	# 	Y[1][i] == 2*Qij[i][j], 
-	# 	Y[2][i] == Iij2[i][j]-U2[i-1],
-	# 	Z[i] == Iij2[i][j] + U2[i - 1],
-	# 	Y[2][i] + Z[i] == 2*Iij2[i][j],
-	# 	Z[i] - Y[2][i] == 2*U2[i-1]
-	# ]
-# cones += [cp.SOC(Z, Y)]
 obj = 0
 for line in lines:
     i = line[1] - 1
@@ -171,44 +153,9 @@ for line in lines:
     obj += R[i][j]*Iij2[i][j]
 
 prob = cp.Problem(cp.Minimize(obj), equal_constraints + inequal_constraints + cones)
-prob.solve(solver=cp.ECOS_BB)
+prob.solve(solver=cp.CVXOPT)
 print(prob.status)
 print(prob.value)
-# 分析优化有的数据
-#输出优化后的结果
-# for i, voltage in enumerate(U2):
-#     if isinstance(QSVG[i], cp.Variable):
-#         print("节点{}的SVG无功功率：{}".format(i+1, QSVG[i].value))
-#     if isinstance(QCB[i], cp.Variable):
-#         print("节点{}的QCB无功功率：{}".format(i+1, QCB[i].value))
-#     if isinstance(PDG[i], cp.Variable):
-#         print("发电机节点{}的有功功率：{}，无功功率：{}".format(i+1, PDG[i].value, QDG[i].value))
-#     if isinstance(voltage, cp.Variable):
-#         print("the voltage of node {} is {}".format(i+1, math.sqrt(voltage.value)))
-#     else :
-#         print("const votage value of node {} is {}".format(i+1, voltage))
-# for line in lines:
-    # i = line[1]
-    # j = line[2]
-    # print("current vlaue of line {} to {} is {}".format(i, j, math.sqrt(Iij2[i-1][j-1].value)))
-# for i, item in enumerate(N_CB):
-#     if isinstance(item, cp.Variable):
-#         print("Capacitor at node {} is in {}".format(i+1, item.value))
-for i in range(n):
-    for j in range(n):
-        if abs(Pij[i][j].value) > 1e-2:
-            print("S[{}][{}] is {}".format(i+1, j+1, Pij[i][j].value))
-        
-loss = 0.885888744
-optimal = 0
-for line in lines:
-    i = line[1] - 1
-    j = line[2] - 1
-    optimal += Pij[i][j].value+Pij[j][i].value
-print("loss reduce by {}% in prob.value".format((loss - prob.value)/loss))
-print("loss reduce by {}% in optimal".format((loss - optimal)/loss))
 # 产生优化后的数据
 
 # 分析优化后的数据
-end = datetime.datetime.now()
-print("程序耗时：{} S".format(end - start))

@@ -4,7 +4,6 @@ from Bus import Bus
 from Area import Area
 import cvxpy as cp
 import numpy as np
-import panda as pd
 
 
 class Grid220:
@@ -15,7 +14,6 @@ class Grid220:
         self.buses = buses
         self.areas = areas
         self.buspriceAverage = 0
-        return 'this is a grid 220kv'
 
     def calcAveragePrice(self):
         count = 0
@@ -60,5 +58,4 @@ class Grid220:
     def optimize(self):
         m = 20
         n = 30
-        Line = pd.xlsread()
         

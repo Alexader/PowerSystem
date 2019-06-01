@@ -3,6 +3,7 @@ class Bus:
         ''' 节点模型'''
         # 下面是输入的数据
         self.busType = -1
+        self.busNum = 0
         self.U = 1
         self.theta = 0.0
         self.BusActivePower = 0

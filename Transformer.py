@@ -19,12 +19,12 @@ class Transformer:
         self.cost = 0
         self.lossproportion = 0
 
-        def calcTansformerLoss(self):
-            num = 0
-            for state in self.transState:
-                if state == 1:
-                    num += 1
-            self.loss = abs(self.activepowerFrom - self.activepowerTo) * num
+    def calcTansformerLoss(self):
+        num = 0
+        for state in self.transState:
+            if state == 1:
+                num += 1
+        self.loss = abs(self.activepowerFrom - self.activepowerTo) * num
 
-        def getAveragePrice(self):
-            return (self.relationalBus[0].realtimePrice + self.relationalBus[1].realtimePrice) / 2
+    def getAveragePrice(self):
+        return (self.relationalBus[0].realtimePrice + self.relationalBus[1].realtimePrice) / 2

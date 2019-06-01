@@ -6,12 +6,14 @@ class Line:
         # 默认是一条线路，然后每条启用的线路的数据值是一致的
         self.X = 0
         self.R = 0
-        self.numberofLines = 1
-        self.stateofLines = []
+        self.B = 0
+        self.lineNum = 0
+        self.startBus = 0
+        self.endBus = 0
         self.activepowerFrom = 0
         self.activepowerTo = 0
-        self.activepower = 0
-        self.lossproportion = []
+        self.loss = 0
+        self.current = 0
         self.relationalBus = []
 
         # 下面是应该计算出来的数据
@@ -21,10 +23,6 @@ class Line:
 
     def calcLineLoss(self):
         num = 0
-        for state in self.stateofLines:
-            if state == 1:
-                num += 1
-        self.loss = abs(self.activepowerFrom-self.activepowerTo) * num
 
     def getAveragePrice(self):
         return (self.relationalBus[0].realtimePrice + self.relationalBus[1].realtimePrice) / 2
